@@ -23,7 +23,6 @@ class PRViewModel @Inject internal constructor(private val prRepository: PRRepos
   private val mutablePrResponse: MutableLiveData<ApiResponseInfo<List<PRResponse>>> = MutableLiveData()
   val prResponse: LiveData<ApiResponseInfo<List<PRResponse>>> = mutablePrResponse
 
-  private val userCache: HashMap<Long, UserResponse> = HashMap()
 
   fun getPrs(userId: String, repoId: String, state: PR_STATE) = viewModelScope.launch {
 
@@ -44,30 +43,23 @@ class PRViewModel @Inject internal constructor(private val prRepository: PRRepos
             val userRequests = ArrayList<Deferred<ApiResponseInfo<UserResponse>>>()
 
             prs.forEach { pr ->
-              if (userCache[pr.user.id] == null) {
-                val userReq = async {
-                  userRepository.getUserByLoginId(pr.user.login)
+              val userReq = async {
+                userRepository.getUserByLoginId(pr.user.login).also {
+                  if (it is ApiResponseInfo.Success) {
+                    pr.user.userName = it.data!!.name
+                  }
                 }
-                userRequests.add(userReq)
-              } else {
-                pr.user.userName = userCache[pr.user.id]!!.name
               }
+              userRequests.add(userReq)
             }
 
             val users: List<ApiResponseInfo<UserResponse>> = userRequests.awaitAll()
 
             users.forEach { userApiData ->
-              if (userApiData is ApiResponseInfo.Success) {
-                val user: UserResponse = userApiData.data!!
-                userCache[user.id] = user
-              } else {
-                mutablePrResponse.value = response
-              }
-            }
-
-            prs.forEach { pr ->
-              if (pr.user.userName == null && userCache[pr.user.id] != null) {
-                pr.user.userName = userCache[pr.user.id]!!.name
+              if (userApiData is ApiResponseInfo.Error) {
+                withContext(Dispatchers.Main) {
+                  mutablePrResponse.value = response
+                }
               }
             }
 

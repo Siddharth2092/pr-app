@@ -1,7 +1,7 @@
 package com.example.prmanager.ui
 
 import android.os.Bundle
-import android.util.Log
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.viewModels
 import androidx.recyclerview.widget.RecyclerView
@@ -42,16 +42,21 @@ class MainActivity : AppCompatActivity() {
 
             when (response) {
                 is ApiResponseInfo.Loading -> {
-                    Log.i("Stuff", "Loading")
+                    binding.loader.visibility = View.VISIBLE
+                    binding.disclaimer.visibility = View.GONE
                 }
 
                 is ApiResponseInfo.Success -> {
+                    binding.loader.visibility = View.GONE
+                    binding.disclaimer.visibility = View.GONE
                     val adapter = binding.prRecyclerView.adapter as PRListAdapter
                     adapter.submitList(response.data!!)
                 }
 
                 is ApiResponseInfo.Error -> {
-                    Log.i("Stuff", "error" + response.message)
+                    binding.loader.visibility = View.GONE
+                    binding.disclaimer.text = response.message
+                    binding.disclaimer.visibility = View.VISIBLE
                 }
             }
         }
