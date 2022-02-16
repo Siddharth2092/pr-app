@@ -10,7 +10,16 @@ import javax.inject.Inject
 @ActivityRetainedScoped
 class UserRepository @Inject constructor(private val userDataSource: UserDataSource) : BaseApiRequest() {
 
-  suspend fun getUserByLoginId(userId: String): ApiResponseInfo<UserResponse> {
-    return callApi { userDataSource.getUserByLoginId(userId) }
+  private val userCache: HashMap<String, UserResponse> = HashMap()
+
+  suspend fun getUserByLoginId(userLoginId: String): ApiResponseInfo<UserResponse> {
+
+    if (userCache[userLoginId] != null) return ApiResponseInfo.Success(userCache[userLoginId]!!)
+
+    val resp = callApi { userDataSource.getUserByLoginId(userLoginId) }
+    if (resp is ApiResponseInfo.Success) {
+      userCache[userLoginId] = resp.data!!
+    }
+    return resp
   }
 }
